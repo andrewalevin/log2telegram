@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"  # If not defined, then legacy behavior 
 
 [project]
 name = "log2telegram"
-version = "0.1"
+version = "0.2"
 
 description = "🦜 A CLI tool to monitor a file and send updates to Telegram."
 readme = "README.md"
@@ -65,6 +65,6 @@ log2telegram = "log2telegram.main:main"
 package-data = {"sample" = ["*.dat"]}
 
 [tool.setuptools.packages.find]
-where = ["log2telegram"]
+where = ["src"]
 
 
