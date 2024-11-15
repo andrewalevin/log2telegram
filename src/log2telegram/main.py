@@ -1,6 +1,7 @@
 import asyncio
 import os
 import pathlib
+import signal
 import sys
 import socket
 import logging
@@ -163,7 +164,25 @@ async def monitor_file(path: pathlib.Path, seconds_delay: int, filter_color: boo
         else:
             logger.info("No new lines to send.")
 
+
+def handle_suspend(signal, frame):
+    """Handle the SIGTSTP signal (Ctrl+Z)."""
+    logger.info("Process suspended. Exiting...")
+    # No need to pause manually; the system handles the suspension
+    sys.exit(0)
+
+
+def handle_interrupt(signal, frame):
+    """Handle the SIGINT signal (Ctrl+C)."""
+    logger.info("Process interrupted by user. Exiting...")
+    sys.exit(0)
+
+
 def main():
+    signal.signal(signal.SIGTSTP, handle_suspend)
+    signal.signal(signal.SIGINT, handle_interrupt)
+    logger.info("Running ... Press Ctrl+C to stop or Ctrl+Z to suspend.")
+
     """Parse arguments, validate environment, and start file monitoring."""
     parser = argparse.ArgumentParser(description="Monitor a file for changes and send updates to Telegram.")
     parser.add_argument("path", type=pathlib.Path, help="Path to the file to monitor.")
