@@ -137,6 +137,8 @@ async def send_lines(lines: list, filter_color: bool = False, filter_timestamp: 
 
 async def monitor_file(path: pathlib.Path, seconds_delay: int, filter_color: bool, filter_timestamp: bool):
     """Monitor a file for changes, sending new content to Telegram."""
+    await asyncio.sleep(2)
+
     lines, position = await read_file_from_position(path)
     if position == -1:
         logger.error("Failed to read the file initially. Exiting monitoring.")
