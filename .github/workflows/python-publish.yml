@@ -1,0 +1,55 @@
+name: 🍒 Upload and Release Python Package
+
+on:
+  push:
+    branches:
+      - main
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_NAME: log2telegram
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      
+    steps:
+    - name: 🍊 😺 Checkout repository
+      uses: actions/checkout@v4
+
+    - name: 🥝 😺 Set up Python environment
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.x'
+
+    - name: 🐍 🔄 PyPI Upgrade
+      run: python -m pip install --upgrade pip
+
+    - name: 🐍 ⬇️ Python. Install dependencies
+      run: pip install build
+
+    - name: 🐍 🏗️ Python. Build package
+      run: python -m build
+
+    - name: 🐍 💾 🚀 Python PyPI. Publish package
+      uses: pypa/gh-action-pypi-publish@v1.8.6
+      with:
+        user: __token__
+        password: ${{ env.PYPI_API_TOKEN }}
+
+        
+            
+        
+
+
+
+
+
+
+      
