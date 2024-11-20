@@ -132,7 +132,11 @@ async def send_lines(lines: list, filter_color: bool = False, filter_timestamp: 
     message = '\n'.join(lines)
     if len(message) > MAX_TELEGRAM_MESSAGE_LEN:
         message = message[:MAX_TELEGRAM_MESSAGE_LEN] + '\n...\n⚔️ Message trimmed'
-    await send_message(message)
+
+    try:
+        await send_message(message)
+    except Exception as e:
+        logger.error(f'🔴 Error Sending: \n\n{e}\n\n')
 
 
 async def monitor_file(path: pathlib.Path, seconds_delay: int, filter_color: bool, filter_timestamp: bool):
