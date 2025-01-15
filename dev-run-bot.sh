@@ -3,6 +3,9 @@
 #pip install -e . && ytb2audiobot --mode DEV
 pip install -e . --no-deps
 
-log2telegram --filter-color-chars --filter-timestamps /Users/andrewlevin/Desktop/ytb2audiobot/output.log
+# Load the environment variables from the .env file, ignoring comments and handling special characters properly
+set -a  # Automatically export all variables defined
+source .env
+set +a  # Disable automatic export
 
-# log2telegram exp.txt
+log2telegram output.log
