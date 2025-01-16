@@ -15,7 +15,7 @@ from log2telegram.cron import run_periodically
 
 BOT_TOKEN = os.getenv('L2T_BOT_TOKEN', '')
 CHAT_ID = os.getenv('L2T_CHAT_ID', '')
-NOTIFICATION_REFRESH_TIME = os.getenv('L2T_NOTIFICATION_REFRESH_TIME_SEC', 60 * 5)
+NOTIFICATION_REFRESH_TIME_SEC = os.getenv('L2T_NOTIFICATION_REFRESH_TIME_SEC', 60 * 5)
 DELAY_SEC = os.getenv('L2T_DELAY_SEC', 1)
 
 TARGET_PATH = os.getenv('L2T_PATH', 'no-fil.log')
