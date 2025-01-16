@@ -34,7 +34,8 @@ if ! command -v log2telegram &> /dev/null; then
 fi
 
 # Run the log2telegram command
-log_message "🔄 Running log2telegram with  path '$L2T_PATH'..."
+VERSION=$(pip show log2telegram | grep Version )
+log_message "🔄 Running log2telegram ('$VERSION') with  path '$L2T_PATH'..."
 log2telegram "$L2T_PATH"
 
 log_message "✅ Docker container setup complete."
