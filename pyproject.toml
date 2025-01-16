@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"  # If not defined, then legacy behavior 
 
 [project]
 name = "log2telegram"
-version = "0.6"
+version = "0.6.1"
 
 description = "🦜 A CLI tool to monitor a file and send updates to Telegram."
 readme = "README.md"

@@ -8,4 +8,4 @@ set -a  # Automatically export all variables defined
 source .env
 set +a  # Disable automatic export
 
-log2telegram output.log
+log2telegram

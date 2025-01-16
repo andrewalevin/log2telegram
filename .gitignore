@@ -2,6 +2,9 @@
 
 data
 
+logs/
+logs
+
 *.env
 *.log
 

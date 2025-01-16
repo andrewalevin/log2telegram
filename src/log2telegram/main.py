@@ -6,7 +6,6 @@ import sys
 import socket
 import logging
 import re
-import argparse
 from enum import Enum
 from string import Template
 from telegram import Bot
@@ -14,17 +13,21 @@ from telegram import Bot
 from log2telegram.cron import run_periodically
 
 
-# Constants
-TELEGRAM_MAX_TEXT_SIZE = 4096
 BOT_TOKEN = os.getenv('L2T_BOT_TOKEN', '')
 CHAT_ID = os.getenv('L2T_CHAT_ID', '')
 NOTIFICATION_REFRESH_TIME = os.getenv('L2T_NOTIFICATION_REFRESH_TIME_SEC', 60 * 5)
+DELAY_SEC = os.getenv('L2T_DELAY_SEC', 1)
+
+TARGET_PATH = os.getenv('L2T_PATH', 'no-fil.log')
 
 LOG_FORMAT_ORIGINAL = os.getenv('L2T_LOG_FORMAT_ORIGINAL', '')
 LOG_FORMAT_REPRESENTATION = os.getenv('L2T_LOG_FORMAT_REPRESENTATION', '')
 
+# "Remove ANSI color codes from lines before sending."
 FILTER_ANSI_COLORS = os.getenv('L2T_FILTER_ANSI_COLORS', 'true').lower() == 'true'
 
+
+TELEGRAM_MAX_TEXT_SIZE = 4096
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -169,6 +172,25 @@ def get_file_modified_time(path: pathlib.Path) -> float:
         logger.error(f"Unable to retrieve modified time for file '{path}': {e}")
         return 0
 
+
+def get_file_size(path: pathlib.Path) -> int:
+    """
+    Return the size of the file in bytes or 0 if unavailable.
+
+    Args:
+        path (pathlib.Path): The path to the file.
+
+    Returns:
+        int: The size of the file in bytes, or 0 if the file does not exist or cannot be accessed.
+    """
+    if not path.exists():
+        return 0
+    try:
+        return path.stat().st_size
+    except Exception as e:
+        logger.error(f"Unable to retrieve size for file '{path}': {e}")
+        return 0
+
 def filter_color_codes(line: str) -> str:
     """Remove ANSI color codes from a line."""
     ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
@@ -182,6 +204,32 @@ def filter_timestamps(line: str) -> str:
     # - "YYYY-MM-DD HH:MM:SS", "YYYY-MM-DD HH:MM:SS,SSS"
     return re.sub(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:,\d{3})?|\d{1,2}:\d{2}(?::\d{2})?(?:,\d{3})?\s*',
                   '', line)
+
+
+async def read_first_line_from_position(path: pathlib.Path, position: int = 0) -> str:
+    """
+    Read the first new line from the file starting from a specified position.
+
+    Args:
+        path (pathlib.Path): The path to the file.
+        position (int): The position to start reading from (default is 0).
+
+    Returns:
+        tuple[str, int]: A tuple containing the first line read and the new file position.
+                        Returns an empty string and -1 in case of an error.
+    """
+    if not path.is_file() or not os.access(path, os.R_OK):
+        logger.error(f"File '{path}' cannot be read. Check permissions.")
+        return ""
+    try:
+        with path.open('r') as file:
+            file.seek(position)
+            line = file.readline()
+    except Exception as e:
+        logger.error(f"Error reading file '{path}': {e}")
+        return ""
+
+    return line.strip()
 
 
 async def read_file_from_position(path: pathlib.Path, position: int = 0):
@@ -247,13 +295,15 @@ async def send_lines(lines: list):
 
 monitoring = StatusManager()
 
+# Enhanced function
 async def monitor_file(path: pathlib.Path, seconds_delay: int):
     """Monitor a file for changes, sending new content to Telegram."""
     await asyncio.sleep(2)
 
     monitoring.initialize(path)
-    logger.info(f'{monitoring.status}')
+    logger.info("Monitoring initialized.")
 
+    # Read the initial content
     lines, position = await read_file_from_position(path)
     if position == -1:
         logger.error("Failed to read the file initially. Exiting monitoring.")
@@ -262,24 +312,32 @@ async def monitor_file(path: pathlib.Path, seconds_delay: int):
     await send_welcome(path, lines)
 
     last_modified_time = get_file_modified_time(path)
+    last_size = get_file_size(path)
 
     while True:
         await asyncio.sleep(seconds_delay)
 
-        current_modified_time = get_file_modified_time(path)
-        if current_modified_time == last_modified_time:
+        # Check if the file's modified time has changed
+        if (current_modified_time := get_file_modified_time(path)) == last_modified_time:
             continue  # No changes detected
-
         last_modified_time = current_modified_time
+
+        # Update position if the file size has decreased
+        if (current_size := get_file_size(path)) < last_size:
+            position = 0
+        last_size = current_size
+
         lines, new_position = await read_file_from_position(path, position)
-        if position == -1:
+        if new_position == -1:
+            continue
+        position = max(position, new_position)
+
+        if not lines:
+            logger.info("No new lines to send.")
             continue
 
-        if lines:
-            await send_lines(lines)
-            position = max(position, new_position)
-        else:
-            logger.info("No new lines to send.")
+        await send_lines(lines)
+
 
 
 async def check_status_and_send_notification(_params: dict):
@@ -304,33 +362,20 @@ async def run():
     signal.signal(signal.SIGINT, handle_interrupt)
     logger.info("Running ... Press Ctrl+C to stop or Ctrl+Z to suspend.")
 
-    """Parse arguments, validate environment, and start file monitoring."""
-    parser = argparse.ArgumentParser(description="Monitor a file for changes and send updates to Telegram.")
-    parser.add_argument("path", type=pathlib.Path, help="Path to the file to monitor.")
-    parser.add_argument("--delay", type=int, default=1,
-                        help="Polling interval in seconds (default: 1). Must be positive.")
-
-    # "Remove ANSI color codes from lines before sending."
-
-    args = parser.parse_args()
-
-    # Validate seconds_delay argument
-    if args.delay < 1:
-        logger.error("🚫 --delay must be at least 1 second.")
+    path = pathlib.Path(TARGET_PATH)
+    if not path.exists():
+        logger.error(f"🚫 The file '{path}' does not exist.")
+        sys.exit(1)
+    if not os.access(path, os.R_OK):
+        logger.error(f"🚫 The file '{path}' is not readable. Check permissions.")
         sys.exit(1)
 
-    # Validate the file exists and is readable
-    if not args.path.exists():
-        logger.error(f"🚫 The file '{args.path}' does not exist.")
-        sys.exit(1)
-    if not os.access(args.path, os.R_OK):
-        logger.error(f"🚫 The file '{args.path}' is not readable. Check permissions.")
-        sys.exit(1)
+    delay = max(1, DELAY_SEC) if DELAY_SEC else 1
 
-    logger.info(f'Start monitoring for: {args.path}')
+    logger.info(f'Start monitoring for: {path} with delay: {delay}')
 
     await asyncio.gather(
-        monitor_file(args.path, args.delay),
+        monitor_file(path, delay),
         run_periodically(10, check_status_and_send_notification, {}))
 
 

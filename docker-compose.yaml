@@ -1,0 +1,16 @@
+
+services:
+  log2telegram:
+    image: andrewlevin/log2telegram:0.1
+    environment:
+      - L2T_BOT_TOKEN=${L2T_BOT_TOKEN}
+      - L2T_CHAT_ID=${L2T_CHAT_ID}
+      - L2T_NOTIFICATION_REFRESH=${L2T_NOTIFICATION_REFRESH_TIME_SEC}
+      - L2T_LOG_FORMAT_ORIGINAL=${L2T_LOG_FORMAT_ORIGINAL}
+      - L2T_LOG_FORMAT_REPRESENTATION=${L2T_LOG_FORMAT_REPRESENTATION}
+      - L2T_PATH=/var/logs/output.log
+    volumes:
+      - /Users/andrewlevin/Desktop/log2telegram/logs:/var/logs
+    restart: on-failure:3
+
+
