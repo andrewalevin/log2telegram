@@ -1,6 +1,12 @@
 # log2telegram
 
+![Build Status](https://img.shields.io/github/actions/workflow/status/andrewalevin/log2telegram/python-publish.yml) 
+![PyPI - Version](https://img.shields.io/pypi/v/log2telegram)
+![Docker Image Version](https://img.shields.io/docker/v/andrewlevin/log2telegram)
+
+
 log2telegram is a CLI tool to monitor changes in a specified log file and send updates to a Telegram chat. This package allows you to stay informed about updates in critical logs or other files by sending new content as Telegram messages, with customizable options to filter color codes and timestamps.
+
 
 Features
 
